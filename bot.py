@@ -21,7 +21,6 @@ BOOKS = [
 def download_arabic_font():
     font_path = "Tajawal-Black.ttf"
     if not os.path.exists(font_path):
-        # خط تجوال العريض - فخم جداً وعصري
         url = "https://github.com/google/fonts/raw/main/ofl/tajawal/Tajawal-Black.ttf"
         r = requests.get(url)
         with open(font_path, 'wb') as f:
@@ -45,21 +44,23 @@ def get_random_gutenberg_excerpt():
 def generate_story_and_title(excerpt):
     client = InferenceClient(token=HF_TOKEN)
     prompt = f"""
-    أنت راوي قصص تاريخي محترف تستهدف جمهوراً يعشق الغموض والإثارة.
+    أنت راوي قصص تاريخي بشري محترف.
     اقرأ هذا المقتطف من كتاب تاريخي قديم:
     "{excerpt}"
     
-    مهمتك هي استخراج قصة تاريخية أو حدث غريب من هذا النص، وكتابته باللغة العربية بتفصيل ممتع.
-    اكتب القصة بشكل متكامل ومقسم إلى:
-    1. مقدمة غامضة ومثيرة.
-    2. صلب القصة والتفاصيل.
-    3. الخاتمة أو العبرة.
+    استخرج الحدث التاريخي من هذا النص، واكتبه باللغة العربية بأسلوب بشري طبيعي جداً.
+    
+    شروط السرد الصارمة:
+    1. **يجب** أن تبدأ القصة دائماً بذكر التاريخ (مثلاً: "في عام 1800م، ..." أو "في القرن الخامس عشر، ...").
+    2. اكتب القصة كاملة بدون اختصار مخل وبدون تمطيط ممل.
+    3. ضع التشكيل (الحركات) فقط على الكلمات الصعبة التي قد يُخطئ القارئ في نطقها، ولا تشكل كل الحروف.
+    4. قسم القصة إلى 3 فقرات متصلة (بداية، ذروة، ونهاية).
     
     يجب أن توفر إجابتك بصيغة JSON حصرياً كالتالي:
     {{
       "title": "عنوان جذاب جدا ومثير للقصة (لا يتجاوز 6 كلمات)",
       "image_prompt": "A highly detailed cinematic historical painting representing the core event, dramatic lighting, 8k",
-      "story": "القصة كاملة هنا ومقسمة لفقرات مع إيموجي وهاشتاقات"
+      "story": "القصة كاملة هنا ومقسمة لفقرات مع إيموجي خفيفة وهاشتاقات"
     }}
     
     أعطني الـ JSON فقط بدون أي نص إضافي.
@@ -84,7 +85,6 @@ def generate_story_and_title(excerpt):
         return None, None, None
 
 def resize_to_tiktok_format(img):
-    # مقاس التيك توك والسناب (1080 عرض * 1920 طول)
     target_width = 1080
     target_height = 1920
     img_ratio = img.width / img.height
@@ -108,26 +108,21 @@ def resize_to_tiktok_format(img):
 def add_arabic_text_to_image(image_path, text, font_path):
     try:
         img = Image.open(image_path).convert("RGBA")
-        
-        # 1. قص الصورة لمقاس تيك توك 9:16
         img = resize_to_tiktok_format(img)
         width, height = img.size
         
         overlay = Image.new('RGBA', img.size, (0, 0, 0, 0))
         draw = ImageDraw.Draw(overlay)
         
-        # 2. إعدادات الخطوط
-        font_size = int(height * 0.06) # عنوان كبير جداً
+        font_size = int(height * 0.06) 
         font = ImageFont.truetype(font_path, font_size)
         
         channel_text = "قناتنا على التليجرام @qsshistory"
-        channel_font_size = int(height * 0.025) # خط القناة صغير
+        channel_font_size = int(height * 0.025)
         channel_font = ImageFont.truetype(font_path, channel_font_size)
         
-        # تقسيم النص الطويل
         lines = textwrap.wrap(text, width=16)
         
-        # حساب أبعاد النصوص لرسم المربع الشفاف
         line_heights = []
         line_widths = []
         for line in lines:
@@ -140,46 +135,40 @@ def add_arabic_text_to_image(image_path, text, font_path):
         c_height = c_bbox[3] - c_bbox[1]
             
         total_title_height = sum(line_heights) + (len(lines) - 1) * 20
-        # إجمالي طول النصوص = طول العنوان + مسافة + طول اسم القناة
         total_text_height = total_title_height + 40 + c_height 
         max_line_width = max(max(line_widths) if line_widths else 0, c_width)
         
-        # أبعاد المربع
         box_padding_x = 80
         box_padding_y = 60
         box_width = max_line_width + box_padding_x * 2
         box_height = total_text_height + box_padding_y * 2
         
-        # موقع المربع (في الثلث السفلي أو المنتصف)
         box_x1 = (width - box_width) / 2
         box_y1 = height * 0.65 - (box_height / 2) 
         box_x2 = box_x1 + box_width
         box_y2 = box_y1 + box_height
         
-        # رسم المربع الشفاف بحواف دائرية احترافية
         draw.rounded_rectangle([box_x1, box_y1, box_x2, box_y2], radius=40, fill=(0, 0, 0, 180))
         
-        # كتابة خطوط العنوان
         y_start = box_y1 + box_padding_y
         for i, line in enumerate(lines):
             draw.text(
                 (width / 2, y_start),
                 line,
                 font=font,
-                fill=(255, 215, 0, 255), # لون ذهبي للعنوان
+                fill=(255, 215, 0, 255), 
                 direction="rtl",
                 align="center",
-                anchor="ma" # ارتكاز علوي منتصف
+                anchor="ma" 
             )
             y_start += line_heights[i] + 20
             
-        # كتابة اسم القناة تحت العنوان
-        y_start += 20 # مسافة إضافية بين العنوان واسم القناة
+        y_start += 20 
         draw.text(
             (width / 2, y_start),
             channel_text,
             font=channel_font,
-            fill=(220, 220, 220, 255), # لون فضي فاتح
+            fill=(220, 220, 220, 255),
             direction="rtl",
             align="center",
             anchor="ma"
