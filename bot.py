@@ -19,9 +19,9 @@ BOOKS = [
 ]
 
 def download_arabic_font():
-    font_path = "Amiri-Bold.ttf"
+    font_path = "Tajawal-Black.ttf"
     if not os.path.exists(font_path):
-        url = "https://github.com/google/fonts/raw/main/ofl/amiri/Amiri-Bold.ttf"
+        url = "https://github.com/google/fonts/raw/main/ofl/tajawal/Tajawal-Black.ttf"
         r = requests.get(url)
         with open(font_path, 'wb') as f:
             f.write(r.content)
@@ -82,76 +82,115 @@ def generate_story_and_title(excerpt):
         print(f"Error generating story: {e}")
         return None, None, None
 
+def resize_to_tiktok_format(img):
+    target_width = 1080
+    target_height = 1920
+    img_ratio = img.width / img.height
+    target_ratio = target_width / target_height
+
+    if img_ratio > target_ratio:
+        new_height = target_height
+        new_width = int(new_height * img_ratio)
+    else:
+        new_width = target_width
+        new_height = int(new_width / img_ratio)
+
+    img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+    left = (new_width - target_width) / 2
+    top = (new_height - target_height) / 2
+    right = (new_width + target_width) / 2
+    bottom = (new_height + target_height) / 2
+    
+    return img.crop((left, top, right, bottom))
+
 def add_arabic_text_to_image(image_path, text, font_path):
     try:
         img = Image.open(image_path).convert("RGBA")
+        
+        # 1. Resize and crop for TikTok / Snapchat (1080x1920)
+        img = resize_to_tiktok_format(img)
         width, height = img.size
         
         overlay = Image.new('RGBA', img.size, (0, 0, 0, 0))
         draw = ImageDraw.Draw(overlay)
         
-        # Bottom gradient for title
-        rect_height = int(height * 0.25)
-        for i in range(rect_height):
-            alpha = int(200 * (i / rect_height))
-            draw.line([(0, height - rect_height + i), (width, height - rect_height + i)], fill=(0, 0, 0, alpha))
-            
-        # Top gradient for channel name
-        top_rect_height = int(height * 0.15)
-        for i in range(top_rect_height):
-            alpha = int(180 * (1 - (i / top_rect_height)))
-            draw.line([(0, i), (width, i)], fill=(0, 0, 0, alpha))
-        
-        img = Image.alpha_composite(img, overlay)
-        draw = ImageDraw.Draw(img)
-        
-        # 1. Draw Title natively using Pillow 10+ with direction="rtl" and textwrap
-        font_size = int(height * 0.055)
+        # 2. Draw Title inside a beautiful semi-transparent box
+        font_size = int(height * 0.045) # Very large font
         font = ImageFont.truetype(font_path, font_size)
+        lines = textwrap.wrap(text, width=20)
         
-        # Wrap the text so it doesn't overflow
-        lines = textwrap.wrap(text, width=28)
-        
-        # Center coordinates
-        x = width / 2
-        y_start = height - rect_height + (rect_height / 2) - ((len(lines) * font_size) / 2)
-        
-        stroke_color = (0, 0, 0, 255)
-        text_color = (255, 215, 0, 255) # Gold
-        
+        # Calculate box dimensions based on text size
+        line_heights = []
+        line_widths = []
         for line in lines:
+            bbox = draw.textbbox((0, 0), line, font=font)
+            line_widths.append(bbox[2] - bbox[0])
+            line_heights.append(bbox[3] - bbox[1])
+            
+        total_text_height = sum(line_heights) + (len(lines) - 1) * 20
+        max_line_width = max(line_widths)
+        
+        box_padding_x = 80
+        box_padding_y = 50
+        box_width = max_line_width + box_padding_x * 2
+        box_height = total_text_height + box_padding_y * 2
+        
+        box_x1 = (width - box_width) / 2
+        box_y1 = height * 0.72 - (box_height / 2) # Position at lower third
+        box_x2 = box_x1 + box_width
+        box_y2 = box_y1 + box_height
+        
+        # Draw rounded rectangle for Title
+        draw.rounded_rectangle([box_x1, box_y1, box_x2, box_y2], radius=40, fill=(0, 0, 0, 160))
+        
+        # Draw Text Lines
+        y_start = box_y1 + box_padding_y
+        for i, line in enumerate(lines):
             draw.text(
-                (x, y_start),
+                (width / 2, y_start),
                 line,
                 font=font,
-                fill=text_color,
-                stroke_width=2,
-                stroke_fill=stroke_color,
+                fill=(255, 215, 0, 255), # Golden Color
                 direction="rtl",
                 align="center",
-                anchor="mm"
+                anchor="ma"
             )
-            y_start += font_size + 10 # spacing between lines
-        
-        # 2. Draw Channel Name
+            y_start += line_heights[i] + 20
+            
+        # 3. Draw Channel Name inside a small pill shape at the top
         channel_text = "قناتنا على التليجرام @qsshistory"
-        channel_font_size = int(height * 0.035)
+        channel_font_size = int(height * 0.025)
         channel_font = ImageFont.truetype(font_path, channel_font_size)
         
-        c_y = int(height * 0.05)
+        c_bbox = draw.textbbox((0, 0), channel_text, font=channel_font)
+        c_width = c_bbox[2] - c_bbox[0]
+        c_height = c_bbox[3] - c_bbox[1]
         
+        c_pad_x = 40
+        c_pad_y = 20
+        c_box_w = c_width + c_pad_x * 2
+        c_box_h = c_height + c_pad_y * 2
+        
+        c_x1 = (width - c_box_w) / 2
+        c_y1 = int(height * 0.05)
+        c_x2 = c_x1 + c_box_w
+        c_y2 = c_y1 + c_box_h
+        
+        # Draw channel pill shape
+        draw.rounded_rectangle([c_x1, c_y1, c_x2, c_y2], radius=30, fill=(0, 0, 0, 150))
+        
+        # Draw channel text
         draw.text(
-            (x, c_y), 
-            channel_text, 
-            font=channel_font, 
-            fill=(255, 255, 255, 200), 
-            stroke_width=1, 
-            stroke_fill=(0,0,0,255),
+            (width / 2, c_y1 + c_pad_y),
+            channel_text,
+            font=channel_font,
+            fill=(255, 255, 255, 255),
             direction="rtl",
             align="center",
-            anchor="mm"
+            anchor="ma"
         )
         
+        img = Image.alpha_composite(img, overlay)
         output_path = "history_image_with_title.png"
         img.convert("RGB").save(output_path)
         return output_path
