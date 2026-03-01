@@ -63,7 +63,7 @@ def generate_story_and_title(excerpt):
     يجب أن توفر إجابتك بصيغة JSON حصرياً كالتالي (بدون أي نص إضافي خارجه):
     {{
       "title": "عنوان جذاب للقصة (لا يتجاوز 6 كلمات)",
-      "image_prompt": "A highly detailed cinematic historical painting representing the core event, dramatic lighting, 8k",
+      "image_prompt": "A highly detailed semi-realistic anime style illustration representing the core event, lifelike anime characters, 2.5D anime, cinematic lighting, 8k, masterpiece",
       "story": "القصة المترجمة والمسرودة هنا بشكل متصل بدون أي عناوين فرعية وبدون عبرة"
     }}
     """
