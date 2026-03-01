@@ -195,15 +195,33 @@ def add_arabic_text_to_image(image_path, text, font_path):
 
 def generate_image_with_title(image_prompt, title, font_path):
     client = InferenceClient(token=HF_TOKEN)
-    try:
-        image = client.text_to_image(image_prompt, model="stabilityai/stable-diffusion-xl-base-1.0")
-        base_image_path = "base_image.png"
-        image.save(base_image_path)
-        final_image_path = add_arabic_text_to_image(base_image_path, title, font_path)
-        return final_image_path
-    except Exception as e:
-        print(f"Error generating image: {e}")
-        return None
+    base_image_path = "base_image.png"
+    image_success = False
+    
+    # محاولة توليد الصورة مع نموذج بديل في حال فشل النموذج الأول
+    models_to_try = [
+        "stabilityai/stable-diffusion-xl-base-1.0",
+        "prompthero/openjourney" 
+    ]
+    
+    for model in models_to_try:
+        try:
+            print(f"Attempting image generation with {model}...")
+            image = client.text_to_image(image_prompt, model=model)
+            image.save(base_image_path)
+            image_success = True
+            break
+        except Exception as e:
+            print(f"Error generating image with {model}: {e}")
+            
+    # في حال فشل التوليد تماماً، إنشاء خلفية افتراضية أنيقة
+    if not image_success:
+        print("Falling back to a solid background image.")
+        fallback_img = Image.new('RGB', (1080, 1920), color=(25, 30, 40))
+        fallback_img.save(base_image_path)
+        
+    final_image_path = add_arabic_text_to_image(base_image_path, title, font_path)
+    return final_image_path
 
 def send_to_telegram(text, image_path=None):
     if image_path and os.path.exists(image_path):
