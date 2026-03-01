@@ -12,10 +12,10 @@ TELEGRAM_BOT_TOKEN = os.environ.get("BOT_TOKEN")
 CHANNEL_ID = "-1003884004969"
 
 BOOKS = [
-    "https://www.gutenberg.org/cache/epub/43632/pg43632.txt",
-    "https://www.gutenberg.org/cache/epub/24518/pg24518.txt",
-    "https://www.gutenberg.org/cache/epub/52562/pg52562.txt",
-    "https://www.gutenberg.org/cache/epub/10940/pg10940.txt"
+    ("Historic Oddities", "https://www.gutenberg.org/cache/epub/43632/pg43632.txt"),
+    ("Extraordinary Popular Delusions", "https://www.gutenberg.org/cache/epub/24518/pg24518.txt"),
+    ("Curiosities of History", "https://www.gutenberg.org/cache/epub/52562/pg52562.txt"),
+    ("Ten Thousand Wonderful Things", "https://www.gutenberg.org/cache/epub/10940/pg10940.txt")
 ]
 
 def download_arabic_font():
@@ -28,18 +28,19 @@ def download_arabic_font():
     return font_path
 
 def get_random_gutenberg_excerpt():
-    url = random.choice(BOOKS)
+    book_title, url = random.choice(BOOKS)
     headers = {"User-Agent": "HistoricalBot/1.0"}
     try:
         response = requests.get(url, headers=headers)
         if response.status_code == 200:
             text = response.text
             start_index = int(len(text) * random.uniform(0.15, 0.80))
-            chunk = text[start_index:start_index+4000]
-            return chunk
+            # Increase chunk size to guarantee enough details
+            chunk = text[start_index:start_index+5000]
+            return chunk, book_title
     except Exception as e:
         print(f"Error fetching book: {e}")
-    return "In 1800s, a strange event occurred where a whole village started dancing uncontrollably."
+    return "In 1800s, a strange event occurred where a whole village started dancing uncontrollably.", "History Archive"
 
 def generate_story_and_title(excerpt):
     client = InferenceClient(token=HF_TOKEN)
@@ -48,28 +49,30 @@ def generate_story_and_title(excerpt):
     اقرأ هذا المقتطف من كتاب تاريخي قديم:
     "{excerpt}"
     
-    استخرج الحدث التاريخي من هذا النص، واكتبه باللغة العربية بأسلوب بشري طبيعي جداً.
+    استخرج القصة بالكامل واكتبها باللغة العربية. الذكاء الاصطناعي أحيانا يقطع القصة في المنتصف وتصبح ناقصة، لكنك لن تفعل ذلك أبدًا!
+    يجب أن تكتب القصة من البداية وحتى نهايتها المنطقية بشكل سردي مكتمل، طويل، ومفصل.
     
-    شروط السرد الصارمة:
-    1. **يجب** أن تبدأ القصة دائماً بذكر التاريخ (مثلاً: "في عام 1800م، ..." أو "في القرن الخامس عشر، ...").
-    2. اكتب القصة كاملة بدون اختصار مخل وبدون تمطيط ممل.
-    3. ضع التشكيل (الحركات) فقط على الكلمات الصعبة التي قد يُخطئ القارئ في نطقها، ولا تشكل كل الحروف.
-    4. قسم القصة إلى 3 فقرات متصلة (بداية، ذروة، ونهاية).
+    الشروط:
+    1. **يجب** أن تبدأ السرد بذكر التاريخ (مثلاً: "في عام كذا...").
+    2. يجب تقسيم القصة إلى 3 دفعات واضحة في النص باستخدام العناوين التالية للفقرات:
+       - 🔹 بداية القصة:
+       - 🔹 ذروة الحدث:
+       - 🔹 نهاية القصة والعبرة:
+    3. لا تختصر الأحداث المهمة! اكتب قصة دسمة تناسب القراء الذين يحبون التفاصيل.
+    4. ضع التشكيل فقط على الكلمات الصعبة.
     
-    يجب أن توفر إجابتك بصيغة JSON حصرياً كالتالي:
+    يجب أن توفر إجابتك بصيغة JSON حصرياً كالتالي (بدون أي نص إضافي خارجه):
     {{
-      "title": "عنوان جذاب جدا ومثير للقصة (لا يتجاوز 6 كلمات)",
+      "title": "عنوان جذاب للقصة (لا يتجاوز 6 كلمات)",
       "image_prompt": "A highly detailed cinematic historical painting representing the core event, dramatic lighting, 8k",
-      "story": "القصة كاملة هنا ومقسمة لفقرات مع إيموجي خفيفة وهاشتاقات"
+      "story": "القصة الكاملة هنا مقسمة للثلاث دفعات المذكورة"
     }}
-    
-    أعطني الـ JSON فقط بدون أي نص إضافي.
     """
     try:
         response = client.chat.completions.create(
             model="Qwen/Qwen2.5-72B-Instruct",
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=2000
+            max_tokens=3000
         )
         
         content = response.choices[0].message.content.strip()
@@ -216,7 +219,7 @@ def send_to_telegram(text, image_path=None):
 
 def main():
     font_path = download_arabic_font()
-    excerpt = get_random_gutenberg_excerpt()
+    excerpt, book_title = get_random_gutenberg_excerpt()
     title, story, image_prompt = generate_story_and_title(excerpt)
     
     if not story:
@@ -225,7 +228,11 @@ def main():
         
     print(f"Title: {title}")
     image_path = generate_image_with_title(image_prompt, title, font_path)
-    send_to_telegram(f"✨ **{title}**\n\n{story}", image_path)
+    
+    # Append the source to the end of the story
+    final_text = f"✨ **{title}**\n\n{story}\n\n📚 **المصدر:** كتاب ({book_title})"
+    
+    send_to_telegram(final_text, image_path)
     print("Done!")
 
 if __name__ == "__main__":
