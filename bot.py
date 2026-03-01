@@ -35,8 +35,7 @@ def get_random_gutenberg_excerpt():
         if response.status_code == 200:
             text = response.text
             start_index = int(len(text) * random.uniform(0.15, 0.80))
-            # Increase chunk size to guarantee enough details
-            chunk = text[start_index:start_index+5000]
+            chunk = text[start_index:start_index+6000]
             return chunk, book_title
     except Exception as e:
         print(f"Error fetching book: {e}")
@@ -45,27 +44,25 @@ def get_random_gutenberg_excerpt():
 def generate_story_and_title(excerpt):
     client = InferenceClient(token=HF_TOKEN)
     prompt = f"""
-    أنت راوي قصص تاريخي بشري محترف.
-    اقرأ هذا المقتطف من كتاب تاريخي قديم:
+    أنت راوي قصص تاريخي بشري محترف ومترجم دقيق.
+    اقرأ هذا المقتطف من كتاب تاريخي إنجليزي قديم:
     "{excerpt}"
     
-    استخرج القصة بالكامل واكتبها باللغة العربية. الذكاء الاصطناعي أحيانا يقطع القصة في المنتصف وتصبح ناقصة، لكنك لن تفعل ذلك أبدًا!
-    يجب أن تكتب القصة من البداية وحتى نهايتها المنطقية بشكل سردي مكتمل، طويل، ومفصل.
+    مهمتك:
+    استخرج الحدث التاريخي من النص، واسرده باللغة العربية سردًا متصلًا، مفصلاً، وطويلاً يطابق الأحداث المذكورة في المصدر الأصلي بدون تحريف.
     
-    الشروط:
-    1. **يجب** أن تبدأ السرد بذكر التاريخ (مثلاً: "في عام كذا...").
-    2. يجب تقسيم القصة إلى 3 دفعات واضحة في النص باستخدام العناوين التالية للفقرات:
-       - 🔹 بداية القصة:
-       - 🔹 ذروة الحدث:
-       - 🔹 نهاية القصة والعبرة:
-    3. لا تختصر الأحداث المهمة! اكتب قصة دسمة تناسب القراء الذين يحبون التفاصيل.
+    شروط السرد الصارمة جداً:
+    1. **يجب** أن تبدأ القصة بذكر الزمان والمكان (مثلاً: "في عام كذا في مدينة كذا...").
+    2. اسرد القصة كقطعة واحدة متصلة أو مقسمة لفقرات طبيعية، **يُمنع منعاً باتاً** كتابة عناوين فرعية مثل (بداية القصة، تصاعد الأحداث، ذروة الحدث، النهاية، العبرة).
+    3. **لا تكتب أي عبرة أو دروس مستفادة في النهاية.** فقط اسرد الحدث التاريخي كما حدث ثم توقف.
     4. ضع التشكيل فقط على الكلمات الصعبة.
+    5. لا تختصر! اكتب سردًا دسمًا ومليئًا بالتفاصيل الموجودة في النص.
     
     يجب أن توفر إجابتك بصيغة JSON حصرياً كالتالي (بدون أي نص إضافي خارجه):
     {{
       "title": "عنوان جذاب للقصة (لا يتجاوز 6 كلمات)",
       "image_prompt": "A highly detailed cinematic historical painting representing the core event, dramatic lighting, 8k",
-      "story": "القصة الكاملة هنا مقسمة للثلاث دفعات المذكورة"
+      "story": "القصة المترجمة والمسرودة هنا بشكل متصل بدون أي عناوين فرعية وبدون عبرة"
     }}
     """
     try:
@@ -229,7 +226,6 @@ def main():
     print(f"Title: {title}")
     image_path = generate_image_with_title(image_prompt, title, font_path)
     
-    # Append the source to the end of the story
     final_text = f"✨ **{title}**\n\n{story}\n\n📚 **المصدر:** كتاب ({book_title})"
     
     send_to_telegram(final_text, image_path)
