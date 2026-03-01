@@ -21,6 +21,7 @@ BOOKS = [
 def download_arabic_font():
     font_path = "Tajawal-Black.ttf"
     if not os.path.exists(font_path):
+        # خط تجوال العريض - فخم جداً وعصري
         url = "https://github.com/google/fonts/raw/main/ofl/tajawal/Tajawal-Black.ttf"
         r = requests.get(url)
         with open(font_path, 'wb') as f:
@@ -83,6 +84,7 @@ def generate_story_and_title(excerpt):
         return None, None, None
 
 def resize_to_tiktok_format(img):
+    # مقاس التيك توك والسناب (1080 عرض * 1920 طول)
     target_width = 1080
     target_height = 1920
     img_ratio = img.width / img.height
@@ -107,19 +109,25 @@ def add_arabic_text_to_image(image_path, text, font_path):
     try:
         img = Image.open(image_path).convert("RGBA")
         
-        # 1. Resize and crop for TikTok / Snapchat (1080x1920)
+        # 1. قص الصورة لمقاس تيك توك 9:16
         img = resize_to_tiktok_format(img)
         width, height = img.size
         
         overlay = Image.new('RGBA', img.size, (0, 0, 0, 0))
         draw = ImageDraw.Draw(overlay)
         
-        # 2. Draw Title inside a beautiful semi-transparent box
-        font_size = int(height * 0.045) # Very large font
+        # 2. إعدادات الخطوط
+        font_size = int(height * 0.06) # عنوان كبير جداً
         font = ImageFont.truetype(font_path, font_size)
-        lines = textwrap.wrap(text, width=20)
         
-        # Calculate box dimensions based on text size
+        channel_text = "قناتنا على التليجرام @qsshistory"
+        channel_font_size = int(height * 0.025) # خط القناة صغير
+        channel_font = ImageFont.truetype(font_path, channel_font_size)
+        
+        # تقسيم النص الطويل
+        lines = textwrap.wrap(text, width=16)
+        
+        # حساب أبعاد النصوص لرسم المربع الشفاف
         line_heights = []
         line_widths = []
         for line in lines:
@@ -127,64 +135,51 @@ def add_arabic_text_to_image(image_path, text, font_path):
             line_widths.append(bbox[2] - bbox[0])
             line_heights.append(bbox[3] - bbox[1])
             
-        total_text_height = sum(line_heights) + (len(lines) - 1) * 20
-        max_line_width = max(line_widths)
+        c_bbox = draw.textbbox((0, 0), channel_text, font=channel_font)
+        c_width = c_bbox[2] - c_bbox[0]
+        c_height = c_bbox[3] - c_bbox[1]
+            
+        total_title_height = sum(line_heights) + (len(lines) - 1) * 20
+        # إجمالي طول النصوص = طول العنوان + مسافة + طول اسم القناة
+        total_text_height = total_title_height + 40 + c_height 
+        max_line_width = max(max(line_widths) if line_widths else 0, c_width)
         
+        # أبعاد المربع
         box_padding_x = 80
-        box_padding_y = 50
+        box_padding_y = 60
         box_width = max_line_width + box_padding_x * 2
         box_height = total_text_height + box_padding_y * 2
         
+        # موقع المربع (في الثلث السفلي أو المنتصف)
         box_x1 = (width - box_width) / 2
-        box_y1 = height * 0.72 - (box_height / 2) # Position at lower third
+        box_y1 = height * 0.65 - (box_height / 2) 
         box_x2 = box_x1 + box_width
         box_y2 = box_y1 + box_height
         
-        # Draw rounded rectangle for Title
-        draw.rounded_rectangle([box_x1, box_y1, box_x2, box_y2], radius=40, fill=(0, 0, 0, 160))
+        # رسم المربع الشفاف بحواف دائرية احترافية
+        draw.rounded_rectangle([box_x1, box_y1, box_x2, box_y2], radius=40, fill=(0, 0, 0, 180))
         
-        # Draw Text Lines
+        # كتابة خطوط العنوان
         y_start = box_y1 + box_padding_y
         for i, line in enumerate(lines):
             draw.text(
                 (width / 2, y_start),
                 line,
                 font=font,
-                fill=(255, 215, 0, 255), # Golden Color
+                fill=(255, 215, 0, 255), # لون ذهبي للعنوان
                 direction="rtl",
                 align="center",
-                anchor="ma"
+                anchor="ma" # ارتكاز علوي منتصف
             )
             y_start += line_heights[i] + 20
             
-        # 3. Draw Channel Name inside a small pill shape at the top
-        channel_text = "قناتنا على التليجرام @qsshistory"
-        channel_font_size = int(height * 0.025)
-        channel_font = ImageFont.truetype(font_path, channel_font_size)
-        
-        c_bbox = draw.textbbox((0, 0), channel_text, font=channel_font)
-        c_width = c_bbox[2] - c_bbox[0]
-        c_height = c_bbox[3] - c_bbox[1]
-        
-        c_pad_x = 40
-        c_pad_y = 20
-        c_box_w = c_width + c_pad_x * 2
-        c_box_h = c_height + c_pad_y * 2
-        
-        c_x1 = (width - c_box_w) / 2
-        c_y1 = int(height * 0.05)
-        c_x2 = c_x1 + c_box_w
-        c_y2 = c_y1 + c_box_h
-        
-        # Draw channel pill shape
-        draw.rounded_rectangle([c_x1, c_y1, c_x2, c_y2], radius=30, fill=(0, 0, 0, 150))
-        
-        # Draw channel text
+        # كتابة اسم القناة تحت العنوان
+        y_start += 20 # مسافة إضافية بين العنوان واسم القناة
         draw.text(
-            (width / 2, c_y1 + c_pad_y),
+            (width / 2, y_start),
             channel_text,
             font=channel_font,
-            fill=(255, 255, 255, 255),
+            fill=(220, 220, 220, 255), # لون فضي فاتح
             direction="rtl",
             align="center",
             anchor="ma"
