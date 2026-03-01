@@ -11,7 +11,6 @@ TELEGRAM_BOT_TOKEN = os.environ.get("BOT_TOKEN")
 CHANNEL_ID = "-1003884004969"
 
 def get_on_this_day_event():
-    # Fetch events for TODAY'S date
     today = datetime.datetime.now()
     month = today.month
     day = today.day
@@ -23,7 +22,6 @@ def get_on_this_day_event():
         if response.status_code == 200:
             events = response.json().get("events", [])
             if events:
-                # Choose a random event from today's historical events to avoid repeating
                 event = random.choice(events)
                 year = event.get("year", "Unknown")
                 text = event.get("text", "")
@@ -33,11 +31,10 @@ def get_on_this_day_event():
     except Exception as e:
         print(f"Error fetching from Wikipedia: {e}")
     
-    # Fallback event
     return "Year 1912: The RMS Titanic sinks in the North Atlantic Ocean after hitting an iceberg during her maiden voyage."
 
 def generate_story(event_text):
-    client = InferenceClient(api_key=HF_TOKEN)
+    client = InferenceClient(token=HF_TOKEN)
     prompt = f"""
     أنت راوي قصص تاريخي محترف وكاتب مبدع. 
     اقرأ هذه الحقيقة التاريخية التي حدثت في "مثل هذا اليوم" باللغة الإنجليزية: 
@@ -59,7 +56,7 @@ def generate_story(event_text):
         return None
 
 def generate_image(event_text):
-    client = InferenceClient(api_key=HF_TOKEN)
+    client = InferenceClient(token=HF_TOKEN)
     prompt = f"A highly detailed cinematic historical painting or photograph representing: {event_text[:100]}"
     try:
         image = client.text_to_image(prompt, model="stabilityai/stable-diffusion-xl-base-1.0")
