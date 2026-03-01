@@ -22,7 +22,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install aiogram==3.4.1 edge-tts==6.1.10 aiohttp==3.9.3
+        pip install pyTelegramBotAPI==4.15.4 gTTS==2.5.1
         
     - name: Run Bot
       env:
