@@ -2,10 +2,9 @@ import requests
 import random
 import os
 import json
+import textwrap
 from huggingface_hub import InferenceClient
 from PIL import Image, ImageDraw, ImageFont
-import arabic_reshaper
-from bidi.algorithm import get_display
 
 # Tokens
 HF_TOKEN = os.environ.get("HF_TOKEN")
@@ -106,37 +105,52 @@ def add_arabic_text_to_image(image_path, text, font_path):
         img = Image.alpha_composite(img, overlay)
         draw = ImageDraw.Draw(img)
         
-        # 1. Draw Title
-        reshaped_text = arabic_reshaper.reshape(text)
-        bidi_text = get_display(reshaped_text)
-        
+        # 1. Draw Title natively using Pillow 10+ with direction="rtl" and textwrap
         font_size = int(height * 0.055)
         font = ImageFont.truetype(font_path, font_size)
         
-        bbox = draw.textbbox((0, 0), bidi_text, font=font)
-        text_width = bbox[2] - bbox[0]
-        text_height = bbox[3] - bbox[1]
+        # Wrap the text so it doesn't overflow
+        lines = textwrap.wrap(text, width=28)
         
-        x = (width - text_width) / 2
-        y = height - rect_height + (rect_height - text_height) / 2
+        # Center coordinates
+        x = width / 2
+        y_start = height - rect_height + (rect_height / 2) - ((len(lines) * font_size) / 2)
         
         stroke_color = (0, 0, 0, 255)
         text_color = (255, 215, 0, 255) # Gold
-        draw.text((x, y), bidi_text, font=font, fill=text_color, stroke_width=2, stroke_fill=stroke_color)
         
-        # 2. Draw Channel Name (@qsshistory)
-        channel_text = "@qsshistory"
+        for line in lines:
+            draw.text(
+                (x, y_start),
+                line,
+                font=font,
+                fill=text_color,
+                stroke_width=2,
+                stroke_fill=stroke_color,
+                direction="rtl",
+                align="center",
+                anchor="mm"
+            )
+            y_start += font_size + 10 # spacing between lines
+        
+        # 2. Draw Channel Name
+        channel_text = "قناتنا على التليجرام @qsshistory"
         channel_font_size = int(height * 0.035)
         channel_font = ImageFont.truetype(font_path, channel_font_size)
         
-        c_bbox = draw.textbbox((0, 0), channel_text, font=channel_font)
-        c_width = c_bbox[2] - c_bbox[0]
-        c_height = c_bbox[3] - c_bbox[1]
+        c_y = int(height * 0.05)
         
-        c_x = (width - c_width) / 2
-        c_y = int(height * 0.03) # Near the top
-        
-        draw.text((c_x, c_y), channel_text, font=channel_font, fill=(255, 255, 255, 200), stroke_width=1, stroke_fill=(0,0,0,255))
+        draw.text(
+            (x, c_y), 
+            channel_text, 
+            font=channel_font, 
+            fill=(255, 255, 255, 200), 
+            stroke_width=1, 
+            stroke_fill=(0,0,0,255),
+            direction="rtl",
+            align="center",
+            anchor="mm"
+        )
         
         output_path = "history_image_with_title.png"
         img.convert("RGB").save(output_path)

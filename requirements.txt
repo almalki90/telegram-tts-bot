@@ -1,5 +1,3 @@
 requests
 huggingface_hub
 Pillow
-arabic-reshaper
-python-bidi
