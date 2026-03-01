@@ -2,6 +2,7 @@ import requests
 import json
 import random
 import os
+import re
 from huggingface_hub import InferenceClient
 
 # Tokens
@@ -11,7 +12,6 @@ CHANNEL_ID = "-1003884004969"
 
 def get_random_historical_event():
     # Fetch random historical events from Wikipedia API
-    # 1. Get a random date
     month = random.randint(1, 12)
     day = random.randint(1, 28)
     
@@ -47,18 +47,20 @@ def generate_story(event_text):
     """
     try:
         response = client.chat.completions.create(
-            model="Qwen/Qwen2.5-72B-Instruct",
+            model="deepseek-ai/DeepSeek-R1-Distill-Qwen-32B",
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=1000
+            max_tokens=1500 # Increased to allow room for DeepSeek's thinking process
         )
-        return response.choices[0].message.content.strip()
+        content = response.choices[0].message.content
+        # Remove <think> blocks
+        clean_content = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL).strip()
+        return clean_content
     except Exception as e:
         print(f"Error generating story: {e}")
         return None
 
 def generate_image(event_text):
     client = InferenceClient(api_key=HF_TOKEN)
-    # Simplify prompt for image generation
     prompt = f"A highly detailed cinematic historical painting or photograph representing: {event_text[:100]}"
     try:
         image = client.text_to_image(prompt, model="stabilityai/stable-diffusion-xl-base-1.0")
@@ -73,14 +75,11 @@ def send_to_telegram(text, image_path=None):
     if image_path and os.path.exists(image_path):
         url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
         with open(image_path, "rb") as photo:
-            payload = {"chat_id": CHANNEL_ID, "caption": text[:1024]} # Telegram caption limit is 1024
-            # If text is too long, we send photo with short caption, then text as separate message
+            payload = {"chat_id": CHANNEL_ID, "caption": text[:1024]}
             if len(text) > 1024:
                 payload["caption"] = "قصة تاريخية جديدة 👇"
                 requests.post(url, data=payload, files={"photo": photo})
-                # Send full text
                 text_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-                # Split text if longer than 4096 (Telegram limit)
                 for i in range(0, len(text), 4096):
                     requests.post(text_url, json={"chat_id": CHANNEL_ID, "text": text[i:i+4096]})
             else:
