@@ -6,7 +6,13 @@ from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, FSInputFile
 from aiohttp import web
 
-TOKEN = os.environ.get("BOT_TOKEN", "8233159789:AAH4xxt55Ei3W-EkjD7enVQPo_caBQWapEA")
+# جلب التوكن من متغيرات البيئة بدلاً من كتابته في الكود لأسباب أمنية
+TOKEN = os.environ.get("BOT_TOKEN")
+
+if not TOKEN:
+    print("Error: BOT_TOKEN is missing!")
+    exit(1)
+
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
@@ -54,23 +60,31 @@ async def handle_text(message: types.Message):
         await communicate.save(audio_file)
         audio = FSInputFile(audio_file)
         await bot.send_audio(chat_id=message.chat.id, audio=audio)
-        os.remove(audio_file)
+        if os.path.exists(audio_file):
+            os.remove(audio_file)
         await bot.delete_message(chat_id=message.chat.id, message_id=processing_msg.message_id)
     except Exception as e:
-        await bot.edit_message_text("❌ حدث خطأ، يرجى المحاولة مرة أخرى.", chat_id=message.chat.id, message_id=processing_msg.message_id)
+        print(f"Error generating audio: {e}")
+        await bot.edit_message_text("❌ حدث خطأ أثناء توليد الصوت. يرجى المحاولة مرة أخرى.", chat_id=message.chat.id, message_id=processing_msg.message_id)
 
 async def handle_web(request):
-    return web.Response(text="Bot is running!")
+    return web.Response(text="Bot is running smoothly! 🚀")
 
 async def main():
     app = web.Application()
     app.router.add_get('/', handle_web)
     runner = web.AppRunner(app)
     await runner.setup()
+    
+    # استخدام البورت الذي توفره Render
     port = int(os.environ.get("PORT", 10000))
     site = web.TCPSite(runner, '0.0.0.0', port)
     await site.start()
+    print(f"Web server started on port {port}")
     
+    # بدء تشغيل البوت
+    print("Bot is starting...")
+    await bot.delete_webhook(drop_pending_updates=True) # حذف أي رسائل قديمة عالقة
     await dp.start_polling(bot)
 
 if __name__ == '__main__':
