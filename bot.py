@@ -1,53 +1,112 @@
-import telebot
+import requests
+import json
+import random
 import os
-from gtts import gTTS
-import traceback
+from huggingface_hub import InferenceClient
 
-BOT_TOKEN = os.environ.get("BOT_TOKEN")
+# Tokens
+HF_TOKEN = os.environ.get("HF_TOKEN")
+TELEGRAM_BOT_TOKEN = os.environ.get("BOT_TOKEN")
+CHANNEL_ID = "-1003884004969"
 
-if not BOT_TOKEN:
-    print("Error: BOT_TOKEN is missing!")
-    exit(1)
-
-bot = telebot.TeleBot(BOT_TOKEN)
-
-@bot.message_handler(commands=['start'])
-def send_welcome(message):
-    bot.reply_to(message, "👋 أهلاً بك! \nأرسل لي أي نص عربي وسأقوم بتحويله إلى مقطع صوتي واضح ومستقر فوراً.")
-
-@bot.message_handler(func=lambda message: True)
-def handle_text(message):
-    text = message.text
-    chat_id = message.chat.id
+def get_random_historical_event():
+    # Fetch random historical events from Wikipedia API
+    # 1. Get a random date
+    month = random.randint(1, 12)
+    day = random.randint(1, 28)
     
-    # رسالة انتظار
-    msg = bot.reply_to(message, "⏳ جاري تجهيز المقطع الصوتي، لحظات...")
-    
-    audio_file = f"audio_{chat_id}.mp3"
-    
+    url = f"https://en.wikipedia.org/api/rest_v1/feed/onthisday/events/{month:02d}/{day:02d}"
+    headers = {"User-Agent": "HistoricalBot/1.0"}
     try:
-        # استخدام مكتبة جوجل المستقرة والتي لا تتعرض للحظر أبداً
-        tts = gTTS(text=text, lang='ar', slow=False)
-        tts.save(audio_file)
-        
-        # إرسال المقطع الصوتي للمستخدم
-        with open(audio_file, 'rb') as audio:
-            bot.send_audio(
-                chat_id, 
-                audio, 
-                title="تسجيل صوتي", 
-                performer="المعلق (AI)"
-            )
-            
-        # حذف رسالة الانتظار وتنظيف الملفات المؤقتة
-        bot.delete_message(chat_id, msg.message_id)
-        if os.path.exists(audio_file):
-            os.remove(audio_file)
-            
+        response = requests.get(url, headers=headers)
+        if response.status_code == 200:
+            events = response.json().get("events", [])
+            if events:
+                event = random.choice(events)
+                year = event.get("year", "Unknown")
+                text = event.get("text", "")
+                pages = event.get("pages", [])
+                details = pages[0].get("extract", "") if pages else ""
+                return f"Year {year}: {text}. {details}"
     except Exception as e:
-        error_details = traceback.format_exc()
-        print(f"Error: {error_details}")
-        bot.edit_message_text(f"❌ حدث خطأ:\n{str(e)}", chat_id, msg.message_id)
+        print(f"Error fetching from Wikipedia: {e}")
+    
+    # Fallback event
+    return "Year 1912: The RMS Titanic sinks in the North Atlantic Ocean after hitting an iceberg during her maiden voyage."
 
-print("البوت يعمل الآن ومستعد لاستقبال الرسائل...")
-bot.infinity_polling()
+def generate_story(event_text):
+    client = InferenceClient(api_key=HF_TOKEN)
+    prompt = f"""
+    أنت راوي قصص تاريخي محترف وكاتب مبدع. 
+    اقرأ هذه الحقيقة التاريخية التالية باللغة الإنجليزية: 
+    "{event_text}"
+    
+    أعد صياغتها باللغة العربية على شكل قصة مشوقة جداً ومثيرة للانتباه، كأنك تروي رواية. 
+    اجعل الأسلوب جذاباً، استخدم فقرات قصيرة، وأضف بعض الإيموجي المناسبة. 
+    في النهاية، ضع هاشتاقات مناسبة.
+    """
+    try:
+        response = client.chat.completions.create(
+            model="Qwen/Qwen2.5-72B-Instruct",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=1000
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        print(f"Error generating story: {e}")
+        return None
+
+def generate_image(event_text):
+    client = InferenceClient(api_key=HF_TOKEN)
+    # Simplify prompt for image generation
+    prompt = f"A highly detailed cinematic historical painting or photograph representing: {event_text[:100]}"
+    try:
+        image = client.text_to_image(prompt, model="stabilityai/stable-diffusion-xl-base-1.0")
+        image_path = "history_image.png"
+        image.save(image_path)
+        return image_path
+    except Exception as e:
+        print(f"Error generating image: {e}")
+        return None
+
+def send_to_telegram(text, image_path=None):
+    if image_path and os.path.exists(image_path):
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
+        with open(image_path, "rb") as photo:
+            payload = {"chat_id": CHANNEL_ID, "caption": text[:1024]} # Telegram caption limit is 1024
+            # If text is too long, we send photo with short caption, then text as separate message
+            if len(text) > 1024:
+                payload["caption"] = "قصة تاريخية جديدة 👇"
+                requests.post(url, data=payload, files={"photo": photo})
+                # Send full text
+                text_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+                # Split text if longer than 4096 (Telegram limit)
+                for i in range(0, len(text), 4096):
+                    requests.post(text_url, json={"chat_id": CHANNEL_ID, "text": text[i:i+4096]})
+            else:
+                requests.post(url, data=payload, files={"photo": photo})
+    else:
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+        for i in range(0, len(text), 4096):
+            requests.post(url, json={"chat_id": CHANNEL_ID, "text": text[i:i+4096]})
+
+def main():
+    print("Fetching historical event...")
+    event = get_random_historical_event()
+    print(f"Event: {event}")
+    
+    print("Generating story...")
+    story = generate_story(event)
+    if not story:
+        print("Failed to generate story. Exiting.")
+        return
+    
+    print("Generating image...")
+    image_path = generate_image(event)
+    
+    print("Sending to Telegram channel...")
+    send_to_telegram(story, image_path)
+    print("Done!")
+
+if __name__ == "__main__":
+    main()
