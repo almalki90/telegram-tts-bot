@@ -22,48 +22,41 @@ BOOKS = [
     ("تاريخ الطبري (رسل وملوك)", 6000),
     ("الكامل في التاريخ لابن الأثير", 8000),
     
-    # قضايا وجرائم تاريخية (True Crime & Mysteries)
-    ("The Mammoth Book of Bizarre Crimes", 500),
-    ("The Encyclopedia of Unsolved Crimes", 450),
-    ("True Crime: An American Anthology", 700),
-    ("The Encyclopedia of Serial Killers", 550),
-    ("The Mammoth Book of Historical Whodunnits", 600),
+    # موسوعات تاريخية عالمية ضخمة (World History Encyclopedias)
+    ("The Story of Civilization by Will Durant", 10000),
+    ("The History of the Decline and Fall of the Roman Empire by Edward Gibbon", 3500),
+    ("The Cambridge Ancient History", 9000),
+    ("The Cambridge Medieval History", 8000),
+    ("The Outline of History by H. G. Wells", 1200),
+    ("The History of the World by J.M. Roberts", 1200),
     
-    # رعب وما وراء الطبيعة (Horror & Paranormal)
-    ("The Mammoth Book of True Hauntings", 500),
-    ("The Encyclopedia of Ghosts and Spirits", 400),
-    ("The Mammoth Book of Unexplained Phenomena", 600),
-    ("Haunted Castles and Real Ghost Stories of Europe", 350),
-    ("The Malleus Maleficarum (Witchcraft records)", 800),
-    ("Real Life Vampires and Werewolves: Historical Cases", 300),
+    # تاريخ العصور القديمة والكلاسيكية (Ancient History)
+    ("The Histories by Herodotus", 700),
+    ("The Annals of Imperial Rome by Tacitus", 600),
+    ("Plutarch's Lives of the Noble Greeks and Romans", 1300),
+    ("The Twelve Caesars by Suetonius", 400),
+    ("The Secret History by Procopius", 400),
+    ("SPQR: A History of Ancient Rome by Mary Beard", 600),
+    ("Rubicon: The Last Years of the Roman Republic by Tom Holland", 450),
+    ("Persian Fire: The First World Empire by Tom Holland", 450),
     
-    # تاريخ غامض وألغاز عالمية (Historical Enigmas)
-    ("The Book of Extraordinary Historical Mysteries", 400),
-    ("Great Historical Mysteries by John Canning", 350),
-    ("Mysteries of History by Robert Stewart", 450),
-    ("The Greatest Mysteries of the Ancient World", 500),
-    ("World's Greatest Unsolved Mysteries", 400),
-    ("Historical Enigmas of the Middle Ages", 350),
-    ("Forgotten History: Real Events That Sound Like Fiction", 300),
+    # تاريخ العصور الوسطى والحروب الصليبية (Medieval & Crusades)
+    ("Chronicles of England, France, Spain by Jean Froissart", 800),
+    ("The History of the Crusades by Steven Runciman", 1500),
+    ("The Crusades Through Arab Eyes by Amin Maalouf", 350),
+    ("A Distant Mirror: The Calamitous 14th Century by Barbara W. Tuchman", 700),
+    ("Genghis Khan and the Making of the Modern World", 350),
+    ("Jerusalem: The Biography by Simon Sebag Montefiore", 700),
     
-    # حروب، كوارث، وسفن أشباح (Wars & Sea)
-    ("Unsolved Mysteries of World War II", 450),
-    ("The Mammoth Book of True Survive Stories", 500),
-    ("The Mammoth Book of Pirates", 550),
-    ("Mysterious Shipwrecks and Ghost Ships", 300),
-    
-    # مؤامرات وتنظيمات سرية (Conspiracies & Societies)
-    ("The Mammoth Book of Lost Symbols and Secret Codes", 450),
-    ("True Historical Assassinations and Conspiracies", 400),
-    ("Secret Societies and Subversive Movements in History", 450),
-    ("True Tales of the Illuminati and Secret Societies", 350),
-    ("True Stories of the Knights Templar", 400),
-    ("The Mammoth Book of Cover-Ups", 500),
-    ("The Vatican Secret Archives: Mysteries Revealed", 350),
-    
-    # أخرى
-    ("Strange Histories: The Trial of the Pig, the Walking Dead...", 300),
-    ("Unexplained Disappearances in History", 350)
+    # تاريخ حديث وأحداث فاصلة (Modern History & Milestones)
+    ("A History of the English-Speaking Peoples by Winston Churchill", 2000),
+    ("The Discoverers: A History of Man's Search to Know His World", 800),
+    ("The Silk Roads: A New History of the World by Peter Frankopan", 650),
+    ("Guns, Germs, and Steel by Jared Diamond", 500),
+    ("1491: New Revelations of the Americas Before Columbus", 550),
+    ("The Guns of August by Barbara W. Tuchman", 600),
+    ("The Sleepwalkers: How Europe Went to War in 1914", 750),
+    ("Sapiens: A Brief History of Humankind", 500)
 ]
 
 def get_seeded_book_and_page():
