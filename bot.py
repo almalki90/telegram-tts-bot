@@ -3,7 +3,8 @@ import random
 import os
 import json
 import textwrap
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from huggingface_hub import InferenceClient
 from PIL import Image, ImageDraw, ImageFont
 
@@ -12,9 +13,6 @@ HF_TOKEN = os.environ.get("HF_TOKEN")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 TELEGRAM_BOT_TOKEN = os.environ.get("BOT_TOKEN")
 CHANNEL_ID = "-1003884004969"
-
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
 
 BOOKS = [
     ("Historic Oddities", "https://www.gutenberg.org/cache/epub/43632/pg43632.txt"),
@@ -72,8 +70,14 @@ def generate_story_and_title(excerpt):
     }}
     """
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash', generation_config={"response_mime_type": "application/json"})
-        response = model.generate_content(prompt)
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+            ),
+        )
         content = response.text.strip()
         
         data = json.loads(content)

@@ -1,4 +1,4 @@
 requests
 huggingface_hub
 Pillow
-google-generativeai
+google-genai
