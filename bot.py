@@ -3,13 +3,18 @@ import random
 import os
 import json
 import textwrap
+import google.generativeai as genai
 from huggingface_hub import InferenceClient
 from PIL import Image, ImageDraw, ImageFont
 
 # Tokens
 HF_TOKEN = os.environ.get("HF_TOKEN")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 TELEGRAM_BOT_TOKEN = os.environ.get("BOT_TOKEN")
 CHANNEL_ID = "-1003884004969"
+
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
 
 BOOKS = [
     ("Historic Oddities", "https://www.gutenberg.org/cache/epub/43632/pg43632.txt"),
@@ -42,7 +47,6 @@ def get_random_gutenberg_excerpt():
     return "In 1800s, a strange event occurred where a whole village started dancing uncontrollably.", "History Archive"
 
 def generate_story_and_title(excerpt):
-    client = InferenceClient(token=HF_TOKEN)
     prompt = f"""
     أنت راوي قصص تاريخي بشري محترف ومترجم دقيق.
     اقرأ هذا المقتطف من كتاب تاريخي إنجليزي قديم:
@@ -68,29 +72,21 @@ def generate_story_and_title(excerpt):
     }}
     """
     try:
-        response = client.chat.completions.create(
-            model="Qwen/Qwen2.5-72B-Instruct",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=3000
-        )
+        model = genai.GenerativeModel('gemini-1.5-flash', generation_config={"response_mime_type": "application/json"})
+        response = model.generate_content(prompt)
+        content = response.text.strip()
         
-        content = response.choices[0].message.content.strip()
-        if content.startswith("```json"):
-            content = content[7:-3].strip()
-        elif content.startswith("```"):
-            content = content[3:-3].strip()
-            
         data = json.loads(content)
         
         # Post-process to remove unwanted subheadings and "العبرة" if the model still includes them
-        story = data["story"]
+        story = data.get("story", "")
         unwanted_phrases = ["بداية القصة:", "تصاعد الأحداث:", "ذروة الحدث:", "النهاية:", "الخاتمة:", "العبرة:", "الدروس المستفادة:", "بداية القصة", "تصاعد الأحداث", "ذروة الحدث", "النهاية", "الخاتمة", "العبرة", "الدروس المستفادة"]
         for phrase in unwanted_phrases:
             story = story.replace(phrase, "")
             
-        return data["title"], story, data["image_prompt"]
+        return data.get("title", "قصة تاريخية مثيرة"), story, data.get("image_prompt", "cinematic historical painting 8k")
     except Exception as e:
-        print(f"Error generating story: {e}")
+        print(f"Error generating story with Gemini: {e}")
         return None, None, None
 
 def resize_to_tiktok_format(img):
