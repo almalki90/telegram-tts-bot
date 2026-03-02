@@ -248,7 +248,8 @@ def main():
     
     if not story:
         print("Failed to generate story. Exiting.")
-        return
+        import sys
+        sys.exit(1)
         
     print(f"Title: {title}")
     image_path = generate_image_with_title(image_prompt, title, font_path)
