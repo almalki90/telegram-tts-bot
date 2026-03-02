@@ -3,6 +3,8 @@ import random
 import os
 import json
 import textwrap
+import time
+import math
 from google import genai
 from google.genai import types
 from huggingface_hub import InferenceClient
@@ -15,11 +17,72 @@ TELEGRAM_BOT_TOKEN = os.environ.get("BOT_TOKEN")
 CHANNEL_ID = "-1003884004969"
 
 BOOKS = [
-    ("Historic Oddities", "https://www.gutenberg.org/cache/epub/43632/pg43632.txt"),
-    ("Extraordinary Popular Delusions", "https://www.gutenberg.org/cache/epub/24518/pg24518.txt"),
-    ("Curiosities of History", "https://www.gutenberg.org/cache/epub/52562/pg52562.txt"),
-    ("Ten Thousand Wonderful Things", "https://www.gutenberg.org/cache/epub/10940/pg10940.txt")
+    # المصادر العربية (أهم 3 مصادر)
+    ("البداية والنهاية لابن كثير", 9000),
+    ("تاريخ الطبري (رسل وملوك)", 6000),
+    ("الكامل في التاريخ لابن الأثير", 8000),
+    
+    # قضايا وجرائم تاريخية (True Crime & Mysteries)
+    ("The Mammoth Book of Bizarre Crimes", 500),
+    ("The Encyclopedia of Unsolved Crimes", 450),
+    ("True Crime: An American Anthology", 700),
+    ("The Encyclopedia of Serial Killers", 550),
+    ("The Mammoth Book of Historical Whodunnits", 600),
+    
+    # رعب وما وراء الطبيعة (Horror & Paranormal)
+    ("The Mammoth Book of True Hauntings", 500),
+    ("The Encyclopedia of Ghosts and Spirits", 400),
+    ("The Mammoth Book of Unexplained Phenomena", 600),
+    ("Haunted Castles and Real Ghost Stories of Europe", 350),
+    ("The Malleus Maleficarum (Witchcraft records)", 800),
+    ("Real Life Vampires and Werewolves: Historical Cases", 300),
+    
+    # تاريخ غامض وألغاز عالمية (Historical Enigmas)
+    ("The Book of Extraordinary Historical Mysteries", 400),
+    ("Great Historical Mysteries by John Canning", 350),
+    ("Mysteries of History by Robert Stewart", 450),
+    ("The Greatest Mysteries of the Ancient World", 500),
+    ("World's Greatest Unsolved Mysteries", 400),
+    ("Historical Enigmas of the Middle Ages", 350),
+    ("Forgotten History: Real Events That Sound Like Fiction", 300),
+    
+    # حروب، كوارث، وسفن أشباح (Wars & Sea)
+    ("Unsolved Mysteries of World War II", 450),
+    ("The Mammoth Book of True Survive Stories", 500),
+    ("The Mammoth Book of Pirates", 550),
+    ("Mysterious Shipwrecks and Ghost Ships", 300),
+    
+    # مؤامرات وتنظيمات سرية (Conspiracies & Societies)
+    ("The Mammoth Book of Lost Symbols and Secret Codes", 450),
+    ("True Historical Assassinations and Conspiracies", 400),
+    ("Secret Societies and Subversive Movements in History", 450),
+    ("True Tales of the Illuminati and Secret Societies", 350),
+    ("True Stories of the Knights Templar", 400),
+    ("The Mammoth Book of Cover-Ups", 500),
+    ("The Vatican Secret Archives: Mysteries Revealed", 350),
+    
+    # أخرى
+    ("Strange Histories: The Trial of the Pig, the Walking Dead...", 300),
+    ("Unexplained Disappearances in History", 350)
 ]
+
+def get_seeded_book_and_page():
+    # الحصول على رقم الساعة الحالي (منذ عام 1970)
+    current_hour = int(time.time() / 3600)
+    
+    # استخدام رقم الساعة كبذرة (Seed) لا تتكرر أبداً
+    random.seed(current_hour)
+    
+    # اختيار كتاب بناءً على البذرة
+    book_title, max_pages = random.choice(BOOKS)
+    
+    # اختيار رقم صفحة بناءً على البذرة (تجنب الصفحات الأولى لأنها غالباً فهارس)
+    page_number = random.randint(20, max_pages)
+    
+    # إعادة تصفير البذرة حتى لا يؤثر على باقي أجزاء الكود التي تحتاج عشوائية حقيقية
+    random.seed(time.time())
+    
+    return book_title, page_number
 
 def download_arabic_font():
     font_path = "Tajawal-Black.ttf"
@@ -30,43 +93,29 @@ def download_arabic_font():
             f.write(r.content)
     return font_path
 
-def get_random_gutenberg_excerpt():
-    book_title, url = random.choice(BOOKS)
-    headers = {"User-Agent": "HistoricalBot/1.0"}
-    try:
-        response = requests.get(url, headers=headers)
-        if response.status_code == 200:
-            text = response.text
-            start_index = int(len(text) * random.uniform(0.15, 0.80))
-            chunk = text[start_index:start_index+6000]
-            return chunk, book_title
-    except Exception as e:
-        print(f"Error fetching book: {e}")
-    return "In 1800s, a strange event occurred where a whole village started dancing uncontrollably.", "History Archive"
-
-def generate_story_and_title(excerpt):
+def generate_story_and_title(book_title, page_number):
     prompt = f"""
-    أنت راوي قصص تاريخي بشري محترف ومترجم دقيق.
-    اقرأ هذا المقتطف من كتاب تاريخي إنجليزي قديم:
-    "{excerpt}"
+    أنت باحث تاريخي خبير ومحقق في القصص الغريبة والغامضة.
+    مهمتك الانطلاق فوراً والبحث في الكتاب/الموسوعة التالية:
+    "{book_title}"
+    وتحديداً ابحث في أحداث وأروقة هذا الكتاب بالقرب من الصفحة رقم {page_number}.
     
-    مهمتك:
-    استخرج الحدث التاريخي من النص، واسرده باللغة العربية سردًا متصلًا، مفصلاً، وطويلاً يطابق الأحداث المذكورة في المصدر الأصلي بدون تحريف.
+    استخرج حدثاً تاريخياً واحداً غامضاً، أو قصة حقيقية مرعبة، أو لغزاً، أو جريمة، أو مؤامرة مسجلة في هذا الجزء من الكتاب.
     
     شروط السرد الصارمة جداً:
     1. **يجب** أن تبدأ القصة بذكر الزمان والمكان مباشرة (مثلاً: "في عام كذا في مدينة كذا...").
-    2. اسرد الحدث التاريخي كما هو من المصدر، بدون تمطيط وبدون اختصار مخل.
+    2. اسرد الحدث التاريخي كما هو من المصدر المذكور، بدون تمطيط وبدون اختصار مخل.
     3. قسّم السرد إلى **مقاطع قصيرة جداً (فقرات تشبه التغريدات)**، بحيث يفصل بين كل مقطع وآخر سطر فارغ. هذا مهم جداً لتسهيل القراءة.
     4. **لا تكتب أي عناوين فرعية على الإطلاق** (لا تستخدم كلمات مثل: بداية القصة، تصاعد الأحداث، ذروة الحدث، النهاية، الخاتمة، العبرة).
     5. **تجنب ذكر أي عبرة أو دروس مستفادة**. فقط اسرد الحدث التاريخي وتوقف بمجرد انتهاء الحدث.
     6. ضع التشكيل على الكلمات التي قد يُخطئ القارئ في نطقها.
-    7. اكتب بأسلوب بشري جذاب ومثير، ولكن دقيق تاريخياً.
+    7. اكتب بأسلوب بشري جذاب، درامي، ومثير للاهتمام.
     
     يجب أن توفر إجابتك بصيغة JSON حصرياً كالتالي (بدون أي نص إضافي خارجه):
     {{
       "title": "عنوان جذاب للقصة (لا يتجاوز 6 كلمات)",
       "image_prompt": "A highly detailed semi-realistic anime style illustration representing the core event, lifelike anime characters, 2.5D anime, cinematic lighting, 8k, masterpiece",
-      "story": "القصة المترجمة والمسرودة هنا بشكل متصل بدون أي عناوين فرعية وبدون عبرة"
+      "story": "القصة المسرودة هنا بشكل متصل بدون أي عناوين فرعية وبدون عبرة"
     }}
     """
     try:
@@ -82,7 +131,6 @@ def generate_story_and_title(excerpt):
         
         data = json.loads(content)
         
-        # Post-process to remove unwanted subheadings and "العبرة" if the model still includes them
         story = data.get("story", "")
         unwanted_phrases = ["بداية القصة:", "تصاعد الأحداث:", "ذروة الحدث:", "النهاية:", "الخاتمة:", "العبرة:", "الدروس المستفادة:", "بداية القصة", "تصاعد الأحداث", "ذروة الحدث", "النهاية", "الخاتمة", "العبرة", "الدروس المستفادة"]
         for phrase in unwanted_phrases:
@@ -243,8 +291,11 @@ def send_to_telegram(text, image_path=None):
 
 def main():
     font_path = download_arabic_font()
-    excerpt, book_title = get_random_gutenberg_excerpt()
-    title, story, image_prompt = generate_story_and_title(excerpt)
+    
+    book_title, page_number = get_seeded_book_and_page()
+    print(f"Targeting book: {book_title}, near page {page_number}")
+    
+    title, story, image_prompt = generate_story_and_title(book_title, page_number)
     
     if not story:
         print("Failed to generate story. Exiting.")
@@ -254,7 +305,7 @@ def main():
     print(f"Title: {title}")
     image_path = generate_image_with_title(image_prompt, title, font_path)
     
-    final_text = f"✨ **{title}**\n\n{story}\n\n📚 **المصدر:** كتاب ({book_title})"
+    final_text = f"✨ **{title}**\n\n{story}\n\n📚 **المصدر:** من أروقة كتاب ({book_title})"
     
     send_to_telegram(final_text, image_path)
     print("Done!")
