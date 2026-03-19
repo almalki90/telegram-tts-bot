@@ -17,10 +17,22 @@ TELEGRAM_BOT_TOKEN = os.environ.get("BOT_TOKEN")
 CHANNEL_ID = "-1003884004969"
 
 BOOKS = [
-    # المصادر العربية (أهم 3 مصادر)
+    # أمهات الكتب والمصادر العربية الضخمة
     ("البداية والنهاية لابن كثير", 9000),
     ("تاريخ الطبري (رسل وملوك)", 6000),
     ("الكامل في التاريخ لابن الأثير", 8000),
+    ("مروج الذهب ومعادن الجوهر للمسعودي", 2000),
+    ("عجائب الآثار في التراجم والأخبار للجبرتي", 2500),
+    ("تاريخ ابن خلدون", 3000),
+    
+    # مراجع تاريخ الشرق الأوسط والإسلام (إنجليزية ضخمة)
+    ("A History of the Arab Peoples by Albert Hourani", 600),
+    ("The Middle East: A Brief History of the Last 2,000 Years by Bernard Lewis", 500),
+    ("The Crusades Through Arab Eyes by Amin Maalouf", 350),
+    ("The Great Arab Conquests by Hugh Kennedy", 450),
+    ("Destiny Disrupted: A History of the World Through Islamic Eyes", 450),
+    ("Osman's Dream: The History of the Ottoman Empire", 700),
+    ("A Peace to End All Peace: The Fall of the Ottoman Empire", 650),
     
     # موسوعات تاريخية عالمية ضخمة (World History Encyclopedias)
     ("The Story of Civilization by Will Durant", 10000),
@@ -28,35 +40,17 @@ BOOKS = [
     ("The Cambridge Ancient History", 9000),
     ("The Cambridge Medieval History", 8000),
     ("The Outline of History by H. G. Wells", 1200),
-    ("The History of the World by J.M. Roberts", 1200),
     
-    # تاريخ العصور القديمة والكلاسيكية (Ancient History)
-    ("The Histories by Herodotus", 700),
-    ("The Annals of Imperial Rome by Tacitus", 600),
-    ("Plutarch's Lives of the Noble Greeks and Romans", 1300),
-    ("The Twelve Caesars by Suetonius", 400),
-    ("The Secret History by Procopius", 400),
-    ("SPQR: A History of Ancient Rome by Mary Beard", 600),
-    ("Rubicon: The Last Years of the Roman Republic by Tom Holland", 450),
-    ("Persian Fire: The First World Empire by Tom Holland", 450),
-    
-    # تاريخ العصور الوسطى والحروب الصليبية (Medieval & Crusades)
-    ("Chronicles of England, France, Spain by Jean Froissart", 800),
-    ("The History of the Crusades by Steven Runciman", 1500),
-    ("The Crusades Through Arab Eyes by Amin Maalouf", 350),
-    ("A Distant Mirror: The Calamitous 14th Century by Barbara W. Tuchman", 700),
-    ("Genghis Khan and the Making of the Modern World", 350),
-    ("Jerusalem: The Biography by Simon Sebag Montefiore", 700),
-    
-    # تاريخ حديث وأحداث فاصلة (Modern History & Milestones)
-    ("A History of the English-Speaking Peoples by Winston Churchill", 2000),
-    ("The Discoverers: A History of Man's Search to Know His World", 800),
-    ("The Silk Roads: A New History of the World by Peter Frankopan", 650),
-    ("Guns, Germs, and Steel by Jared Diamond", 500),
-    ("1491: New Revelations of the Americas Before Columbus", 550),
-    ("The Guns of August by Barbara W. Tuchman", 600),
-    ("The Sleepwalkers: How Europe Went to War in 1914", 750),
-    ("Sapiens: A Brief History of Humankind", 500)
+    # الموسوعات الأجنبية من المشروع السابق (غرائب، جرائم تاريخية، وألغاز)
+    ("The Mammoth Book of Bizarre Crimes", 500),
+    ("The Encyclopedia of Unsolved Crimes", 450),
+    ("The Mammoth Book of Historical Whodunnits", 600),
+    ("The Mammoth Book of Unexplained Phenomena", 600),
+    ("The Book of Extraordinary Historical Mysteries", 400),
+    ("Mysteries of History by Robert Stewart", 450),
+    ("Historical Enigmas of the Middle Ages", 350),
+    ("Secret Societies and Subversive Movements in History", 450),
+    ("The Vatican Secret Archives: Mysteries Revealed", 350)
 ]
 
 def get_seeded_book_and_page():
@@ -88,27 +82,28 @@ def download_arabic_font():
 
 def generate_story_and_title(book_title, page_number):
     prompt = f"""
-    أنت باحث تاريخي خبير ومحقق في القصص الغريبة والغامضة.
+    أنت باحث تاريخي خبير ومحقق متخصص في تاريخ الشرق الأوسط (بجميع دوله وعصوره القديمة والحديثة). أنت تبحث دائماً عن الأحداث النادرة والقصص غير المشهورة التي لا يعرفها الكثيرون.
+    
     مهمتك الانطلاق فوراً والبحث في الكتاب/الموسوعة التالية:
     "{book_title}"
     وتحديداً ابحث في أحداث وأروقة هذا الكتاب بالقرب من الصفحة رقم {page_number}.
     
-    استخرج حدثاً تاريخياً واحداً غامضاً، أو قصة حقيقية مرعبة، أو لغزاً، أو جريمة، أو مؤامرة مسجلة في هذا الجزء من الكتاب.
+    استخرج حدثاً تاريخياً واحداً غامضاً، أو قصة حقيقية، أو لغزاً مسجلاً في هذا الجزء من الكتاب. **(إذا كان الكتاب عالمياً، ابحث عن تقاطع أو قصة تخص الشرق الأوسط أو العرب أو المسلمين في تلك الحقبة، وإذا لم تجد، اسرد أندر قصة موجودة في تلك الصفحة).**
     
     شروط السرد الصارمة جداً:
-    1. **يجب** أن تبدأ القصة بذكر الزمان والمكان مباشرة (مثلاً: "في عام كذا في مدينة كذا...").
-    2. اسرد الحدث التاريخي كما هو من المصدر المذكور، بدون تمطيط وبدون اختصار مخل.
-    3. قسّم السرد إلى **مقاطع قصيرة جداً (فقرات تشبه التغريدات)**، بحيث يفصل بين كل مقطع وآخر سطر فارغ. هذا مهم جداً لتسهيل القراءة.
-    4. **لا تكتب أي عناوين فرعية على الإطلاق** (لا تستخدم كلمات مثل: بداية القصة، تصاعد الأحداث، ذروة الحدث، النهاية، الخاتمة، العبرة).
+    1. **مدة القراءة:** اختصر الحدث التاريخي بذكاء شديد وبدون إخلال بالمعنى، ليكون مناسباً للقراءة الصوتية بحيث **لا يتجاوز دقيقتين (يجب أن يكون النص بين 200 إلى 250 كلمة كحد أقصى)**.
+    2. **يجب** أن تبدأ القصة بذكر الزمان والمكان مباشرة (مثلاً: "في عام كذا في مدينة كذا...").
+    3. قسّم السرد إلى **مقاطع قصيرة جداً (فقرات تشبه التغريدات)**، بحيث يفصل بين كل مقطع وآخر سطر فارغ لتسهيل القراءة.
+    4. **لا تكتب أي عناوين فرعية على الإطلاق** (لا تستخدم كلمات مثل: بداية القصة، تصاعد الأحداث، النهاية، العبرة).
     5. **تجنب ذكر أي عبرة أو دروس مستفادة**. فقط اسرد الحدث التاريخي وتوقف بمجرد انتهاء الحدث.
     6. ضع التشكيل على الكلمات التي قد يُخطئ القارئ في نطقها.
-    7. اكتب بأسلوب بشري جذاب، درامي، ومثير للاهتمام.
+    7. اكتب بأسلوب بشري جذاب، درامي، ومثير للاهتمام يشد المستمع.
     
     يجب أن توفر إجابتك بصيغة JSON حصرياً كالتالي (بدون أي نص إضافي خارجه):
     {{
       "title": "عنوان جذاب للقصة (لا يتجاوز 6 كلمات)",
       "image_prompt": "A highly detailed semi-realistic anime style illustration representing the core event, lifelike anime characters, 2.5D anime, cinematic lighting, 8k, masterpiece",
-      "story": "القصة المسرودة هنا بشكل متصل بدون أي عناوين فرعية وبدون عبرة"
+      "story": "القصة المسرودة هنا (250 كلمة كحد أقصى) بشكل متصل بدون أي عناوين فرعية وبدون عبرة"
     }}
     """
     try:
