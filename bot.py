@@ -5,6 +5,8 @@ import json
 import textwrap
 import time
 import math
+import subprocess
+import re
 from google import genai
 from google.genai import types
 from huggingface_hub import InferenceClient
@@ -259,7 +261,50 @@ def generate_image_with_title(image_prompt, title, font_path):
     final_image_path = add_arabic_text_to_image(base_image_path, title, font_path)
     return final_image_path
 
-def send_to_telegram(text, image_path=None):
+def clean_text_for_tts(text):
+    # إزالة الرموز التعبيرية وعلامات النجمة والهاشتاجات لتكون القراءة الصوتية نظيفة
+    text = text.replace('*', '').replace('#', '')
+    text = re.sub(r'http\S+', '', text)
+    # الاحتفاظ بالحروف والأرقام وعلامات الترقيم الأساسية فقط
+    text = re.sub(r'[^\w\s\.,;؟!،:؛\-\(\)]', '', text)
+    return text
+
+def create_video(image_path, title, story, book_title):
+    audio_path = "story_audio.mp3"
+    video_path = "story_video.mp4"
+    
+    # تجهيز النص للصوت
+    tts_text = f"{title}.\n\n{story}\n\nالمصدر: {book_title}"
+    clean_text = clean_text_for_tts(tts_text)
+    
+    # 1. توليد الصوت باستخدام Edge-TTS (صوت عربي سعودي حقيقي ومجاني)
+    try:
+        print("Generating audio with edge-tts...")
+        subprocess.run(['edge-tts', '--voice', 'ar-SA-HamedNeural', '--text', clean_text, '--write-media', audio_path], check=True)
+    except Exception as e:
+        print(f"Error generating audio: {e}")
+        return None
+        
+    # 2. دمج الصورة مع الصوت لإنتاج فيديو جاهز لليوتيوب شورتس/تيك توك
+    try:
+        print("Generating video with ffmpeg...")
+        cmd = [
+            'ffmpeg', '-y',
+            '-loop', '1', '-framerate', '1',
+            '-i', image_path,
+            '-i', audio_path,
+            '-c:v', 'libx264', '-preset', 'ultrafast', '-tune', 'stillimage',
+            '-c:a', 'aac', '-b:a', '192k',
+            '-pix_fmt', 'yuv420p',
+            '-shortest', video_path
+        ]
+        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return video_path
+    except Exception as e:
+        print(f"Error generating video: {e}")
+        return None
+
+def send_to_telegram(text, image_path=None, video_path=None):
     if image_path and os.path.exists(image_path):
         url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
         with open(image_path, "rb") as photo:
@@ -276,6 +321,14 @@ def send_to_telegram(text, image_path=None):
         url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
         for i in range(0, len(text), 4096):
             requests.post(url, json={"chat_id": CHANNEL_ID, "text": text[i:i+4096]})
+            
+    # إرسال الفيديو إذا تم إنشاؤه بنجاح
+    if video_path and os.path.exists(video_path):
+        print("Sending video to Telegram...")
+        video_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendVideo"
+        with open(video_path, "rb") as video:
+            payload = {"chat_id": CHANNEL_ID, "caption": "🎬 المقطع الصوتي للقصة (جاهز للنشر):"}
+            requests.post(video_url, data=payload, files={"video": video})
 
 def main():
     font_path = download_arabic_font()
@@ -293,9 +346,14 @@ def main():
     print(f"Title: {title}")
     image_path = generate_image_with_title(image_prompt, title, font_path)
     
+    # إنتاج الفيديو (صورة + صوت)
+    video_path = None
+    if image_path:
+        video_path = create_video(image_path, title, story, book_title)
+    
     final_text = f"✨ **{title}**\n\n{story}\n\n📚 **المصدر:** من أروقة كتاب ({book_title})"
     
-    send_to_telegram(final_text, image_path)
+    send_to_telegram(final_text, image_path, video_path)
     print("Done!")
 
 if __name__ == "__main__":
